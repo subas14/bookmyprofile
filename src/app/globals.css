@@ -1,0 +1,576 @@
+@import "tailwindcss";
+
+/**
+ * BookMyProfile design tokens.
+ *
+ * Direction: editorial and print-inspired, warm paper surfaces, one terracotta
+ * accent, hairline rules instead of glows or gradients. Deliberately no
+ * violet/blue/cyan anywhere.
+ *
+ * Both themes declare the same token names, so components never need `dark:`
+ * variants: they read semantic tokens and the theme swaps the values.
+ */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --background: #fbf8f5;
+  --surface: #ffffff;
+  --panel: #f4efe9;
+  --foreground: #191512;
+  --muted: #6d625a;
+  --faint: #978c82;
+
+  --line: #e7ded4;
+  --line-strong: #d3c7b9;
+  --subtle: #f3ede6;
+  --subtle-strong: #eae1d7;
+
+  --accent: #c2593a;
+  --accent-hover: #a94729;
+  --accent-fg: #ffffff;
+  --accent-wash: #fbeee8;
+
+  /* Text selection: opaque so it reads the same over paper, cards, panels. */
+  --selection: #f0c3b0;
+  --selection-fg: #3d1a10;
+
+  /* Featured panel (bio card, highlighted tier, closing CTA): light surface
+     card with an accent border in both themes. The fill never flips to the
+     dark ink color; the accent ring is what marks the panel as featured. */
+  --invert: var(--surface);
+  --invert-fg: var(--foreground);
+  --invert-line: var(--accent);
+
+  --success: #2f6b4f;
+  --success-wash: #e8f2eb;
+  --warning: #8d6310;
+  --warning-wash: #f8f0dd;
+  --danger: #ab3a26;
+  --danger-wash: #fbeae6;
+
+  --shadow-card: 0 1px 2px rgba(25, 21, 18, 0.05);
+  --shadow-pop: 0 14px 34px -14px rgba(25, 21, 18, 0.25);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --background: #100f0e;
+  --surface: #191716;
+  --panel: #211e1c;
+  --foreground: #f3eee9;
+  --muted: #a89e94;
+  --faint: #7d7469;
+
+  --line: #2c2826;
+  --line-strong: #3d3835;
+  --subtle: #221f1d;
+  --subtle-strong: #2d2926;
+
+  --accent: #e07a55;
+  --accent-hover: #ec8d69;
+  --accent-fg: #1a1110;
+  --accent-wash: #2b1d17;
+
+  /* Text selection: opaque so it reads the same over paper, cards, panels. */
+  --selection: #7c3a22;
+  --selection-fg: #ffece3;
+
+  /* No inversion in dark mode: featured panels read as surface cards
+     separated by an accent border instead of a flipped fill. */
+  --invert: var(--surface);
+  --invert-fg: var(--foreground);
+  --invert-line: var(--accent);
+
+  --success: #71bd8e;
+  --success-wash: #1a2620;
+  --warning: #d9a84a;
+  --warning-wash: #2a2317;
+  --danger: #e8705a;
+  --danger-wash: #2c1a17;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 18px 42px -18px rgba(0, 0, 0, 0.75);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-panel: var(--panel);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-subtle: var(--subtle);
+  --color-subtle-strong: var(--subtle-strong);
+
+  --color-invert: var(--invert);
+  --color-invert-fg: var(--invert-fg);
+  --color-invert-line: var(--invert-line);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-wash: var(--accent-wash);
+
+  --color-success: var(--success);
+  --color-success-wash: var(--success-wash);
+  --color-warning: var(--warning);
+  --color-warning-wash: var(--warning-wash);
+  --color-danger: var(--danger);
+  --color-danger-wash: var(--danger-wash);
+
+  --font-sans: var(--font-sans-app);
+  --font-mono: var(--font-mono-app);
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Offset anchored sections so they clear the sticky header. */
+  scroll-padding-top: 6rem;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans-app), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Theme swaps should not animate every element, only the page chrome. */
+body,
+body * {
+  transition-property: none;
+}
+
+/* Tight, editorial headline sizing. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.021em;
+}
+
+/**
+ * Pill navigation row (category chips). Hides the scrollbar while staying
+ * horizontally scrollable on narrow viewports.
+ */
+.bmp-scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.bmp-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/**
+ * Snap-scroll rail.
+ *
+ * Used wherever a row of options or pricing tiers is wider than a phone: the
+ * track scrolls horizontally and settles on each item, so a swipe always lands
+ * on a whole card instead of halfway through one. Above `lg` the rail hands the
+ * layout back to whatever the caller declares (usually a grid), which is why
+ * the same markup is a carousel on mobile and a plain row on desktop.
+ */
+.bmp-snap-rail {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scroll-padding-inline: 1.25rem;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.bmp-snap-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.bmp-snap-rail > * {
+  scroll-snap-align: center;
+}
+
+@media (min-width: 1024px) {
+  .bmp-snap-rail {
+    overflow-x: visible;
+    overflow-y: visible;
+    scroll-snap-type: none;
+  }
+}
+
+/* Hairline divider that reads as a rule rather than a border. */
+.bmp-rule {
+  border-bottom: 1px solid var(--line);
+}
+
+/* Fine paper texture: a very low-contrast dot field, no blur blobs. */
+.bmp-paper {
+  background-image: radial-gradient(
+    var(--line-strong) 0.5px,
+    transparent 0.5px
+  );
+  background-size: 18px 18px;
+  opacity: 0.35;
+}
+
+/* Live indicator. */
+@keyframes bmp-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.bmp-live-dot {
+  animation: bmp-pulse 2.4s ease-in-out infinite;
+}
+
+/* Bar-chart column grow-in, used by the analytics charts. */
+@keyframes bmp-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.bmp-bar {
+  transform-origin: bottom;
+  animation: bmp-grow 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ------------------------------------------------------------------ */
+/* Motion system                                                        */
+/* ------------------------------------------------------------------ */
+
+/* Entrance: content rises 14px and fades in. Stagger with --delay. */
+@keyframes bmp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bmp-reveal {
+  animation: bmp-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* Continuous horizontal marquee; content must be duplicated once. */
+@keyframes bmp-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.bmp-marquee {
+  display: flex;
+  width: max-content;
+  animation: bmp-marquee 38s linear infinite;
+}
+
+.bmp-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Edge fade for the marquee track. */
+.bmp-fade-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 10%,
+    black 90%,
+    transparent
+  );
+}
+
+/* Sparkline draw-in. */
+@keyframes bmp-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.bmp-sparkline {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: bmp-draw 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+/* ------------------------------------------------------------------ */
+/* Buttons: sweep fill + sliding arrow                                  */
+/* ------------------------------------------------------------------ */
+
+.bmp-btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.bmp-btn:active {
+  transform: scale(0.97);
+}
+
+/* A darker sheet slides in from the left on hover. */
+.bmp-btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent-hover);
+  transform: translateX(-101%);
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bmp-btn-primary:hover::before {
+  transform: translateX(0);
+}
+
+.bmp-btn-primary:hover {
+  box-shadow: 0 10px 26px -12px var(--accent);
+}
+
+.bmp-btn-secondary:hover {
+  transform: translateY(-1px);
+}
+
+/* Arrow: sits hidden to the right, slides in while label shifts left. */
+.bmp-btn-arrow {
+  display: inline-grid;
+  width: 0;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bmp-btn-arrow > svg {
+  transform: translateX(-10px);
+  opacity: 0;
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease;
+}
+
+.bmp-btn:hover .bmp-btn-arrow {
+  width: 1rem;
+}
+
+.bmp-btn:hover .bmp-btn-arrow > svg {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* Brand mark: a calendar where a slot books itself, on loop            */
+/* ------------------------------------------------------------------ */
+
+@keyframes bmp-mark-slot {
+  0%,
+  18% {
+    transform: scaleX(0);
+  }
+  38%,
+  78% {
+    transform: scaleX(1);
+  }
+  92%,
+  100% {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes bmp-mark-check {
+  0%,
+  40% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  52%,
+  78% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  90%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes bmp-mark-cursor {
+  0% {
+    transform: translate(9px, 10px);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  18% {
+    transform: translate(0, 0);
+  }
+  36% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  46%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+}
+
+.bmp-mark-slot {
+  transform-origin: left center;
+  transform-box: fill-box;
+  animation: bmp-mark-slot 3.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.bmp-mark-check {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: bmp-mark-check 3.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.bmp-mark-cursor {
+  animation: bmp-mark-cursor 3.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+/**
+ * Selectable option: a placement row, a term chip, a plan card.
+ *
+ * The hover treatment is deliberately stronger than `.bmp-lift`. The whole row
+ * is the hit target, so it lifts and picks up a card shadow while the pointer
+ * is anywhere inside it, not only over the checkbox.
+ */
+.bmp-option {
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    background-color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.bmp-option:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-pop);
+}
+
+.bmp-option:active {
+  transform: translateY(0) scale(0.995);
+}
+
+/* Card hover lift, used sparingly on interactive cards. */
+.bmp-lift {
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.bmp-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop);
+  border-color: var(--line-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .bmp-live-dot,
+  .bmp-bar,
+  .bmp-reveal,
+  .bmp-marquee,
+  .bmp-sparkline,
+  .bmp-mark-slot,
+  .bmp-mark-check,
+  .bmp-mark-cursor {
+    animation: none;
+  }
+  .bmp-reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .bmp-sparkline {
+    stroke-dashoffset: 0;
+  }
+  .bmp-mark-slot {
+    transform: scaleX(1);
+  }
+  .bmp-mark-check {
+    opacity: 1;
+    transform: none;
+  }
+  .bmp-mark-cursor {
+    display: none;
+  }
+  .bmp-snap-rail {
+    scroll-behavior: auto;
+  }
+  .bmp-btn,
+  .bmp-btn-primary::before,
+  .bmp-btn-arrow,
+  .bmp-btn-arrow > svg,
+  .bmp-lift,
+  .bmp-option {
+    transition: none;
+  }
+  .bmp-option:hover {
+    transform: none;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/**
+ * Text selection.
+ *
+ * The highlight is its own token pair rather than a reuse of `--accent` /
+ * Text selection.
+ *
+ * The highlight is its own token pair rather than a reuse of `--accent` /
+ * `--accent-fg`. A full-strength accent fill only contrasts against the white
+ * cards, so selected text inside a `--subtle` or `--accent-wash` panel sank
+ * into a tone-on-tone block that was hard to read. These pairs are opaque and
+ * tuned per theme: a soft terracotta wash with ink text in light mode, a deeper
+ * terracotta with warm white text in dark mode.
+ */
+::selection {
+  background-color: var(--selection);
+  color: var(--selection-fg);
+  text-shadow: none;
+}

@@ -1,0 +1,13 @@
+{
+  // Verification scripts run under `node --experimental-strip-types`, which
+  // resolves real files and therefore needs explicit `.ts` specifiers.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext"
+  },
+  "include": ["scripts/**/*.ts", "src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

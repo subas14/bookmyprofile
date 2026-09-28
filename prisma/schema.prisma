@@ -1,0 +1,333 @@
+// BookMyProfile: creator profile advertising inventory marketplace.
+//
+// Provider note: SQLite is used for local development so the whole stack can be
+// migrated + seeded without external services. The schema is intentionally
+// Postgres-compatible (no SQLite-only features; status fields are strings rather
+// than enums so the same schema compiles on both providers). To deploy on
+// Postgres, set `provider = "postgresql"` and point DATABASE_URL at your instance.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A creator sells advertising inventory on their social profile.
+/// Launch ships a single creator, but every query is creator-scoped.
+model Creator {
+  id          String  @id @default(cuid())
+  /// URL slug used for public routes, e.g. /c/shub0414
+  slug        String  @unique
+  handle      String  @unique
+  displayName String
+  headline    String
+  bio         String
+  avatarUrl   String?
+  coverUrl    String?
+  platform    String  @default("x")
+  profileUrl  String
+  timezone    String  @default("UTC")
+
+  /// Only active creators are listed publicly.
+  isActive Boolean @default(true)
+  /// Marks the creator as identity-verified for advertiser trust.
+  isVerified Boolean @default(false)
+
+  /// Creator-wide promo add-on price (a dedicated promotional post).
+  promoPostPriceCents Int @default(24900)
+
+  // ---- Public profile facts, mirrored from the platform profile ----
+  /// Total followers, as shown on the public profile.
+  followerCount  Int     @default(0)
+  followingCount Int     @default(0)
+  /// Lifetime post count shown in the profile header.
+  totalPosts     Int     @default(0)
+  /// Free-text location line from the profile.
+  location       String?
+  /// When the account was created, for "account age" trust signals.
+  joinedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  placements         Placement[]
+  bookings           Booking[]
+  analyticsSnapshots AnalyticsSnapshot[]
+  audienceSegments   AudienceSegment[]
+  testimonials       Testimonial[]
+  dailyMetrics       CreatorDailyMetric[]
+
+  @@index([isActive])
+}
+
+/// A single sellable unit of inventory on a creator's profile.
+model Placement {
+  id        String @id @default(cuid())
+  creatorId String
+
+  /// PlacementKind: COVER_SLOT | BIO_LINK | PROMO_POST
+  kind String
+  /// Stable machine key, unique per creator. e.g. cover-top-left, bio-link
+  slotKey String
+  label   String
+  summary String
+  details String
+
+  /// Monthly list price in the smallest currency unit (USD cents).
+  priceMonthlyCents Int
+  currency          String @default("USD")
+
+  /// How many bookings may be simultaneously ACTIVE on this placement.
+  /// Cover slots and the bio link are exclusive (1). Promo posts allow more.
+  maxConcurrent Int @default(1)
+
+  /// Minimum / maximum bookable term in months.
+  minMonths Int @default(1)
+  maxMonths Int @default(12)
+
+  /// Ordering weight for UI listings.
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator  Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@unique([creatorId, slotKey])
+  @@index([creatorId, isActive])
+}
+
+/// An advertiser's reservation of a placement for a defined period.
+model Booking {
+  id String @id @default(cuid())
+  /// Short human-shareable reference identifying the whole ORDER.
+  /// A multi-placement order creates one row per placement that all share the
+  /// same reference, so this is intentionally NOT unique. Uniqueness is scoped
+  /// to (reference, placementId) below.
+  reference String
+
+  creatorId   String
+  placementId String
+
+  // ---- Advertiser details ----
+  advertiserName  String
+  advertiserEmail String
+  brandName       String
+  /// Destination URL promoted by the campaign.
+  targetUrl       String
+  /// Uploaded logo / creative used in the placement.
+  assetUrl        String?
+  /// Optional brief from the advertiser.
+  notes           String?
+
+  // ---- Term ----
+  months    Int
+  startDate DateTime
+  endDate   DateTime
+
+  // ---- Commercials (all amounts in USD cents) ----
+  listAmountCents     Int
+  discountCents       Int     @default(0)
+  promoAddonCents     Int     @default(0)
+  totalAmountCents    Int
+  currency            String  @default("USD")
+  /// Serialized pricing breakdown for auditability / invoices.
+  pricingBreakdown    String
+  includesPromoPost   Boolean @default(false)
+  appliedDiscountCode String?
+
+  // ---- Lifecycle ----
+  /// BookingStatus: PENDING_PAYMENT | AWAITING_REVIEW | SCHEDULED | LIVE |
+  /// COMPLETED | CANCELLED | REJECTED | REFUNDED
+  status String @default("PENDING_PAYMENT")
+
+  // ---- Payment ----
+  paymentProvider   String    @default("dodo")
+  checkoutSessionId String?
+  paymentId         String?
+  paidAt            DateTime?
+  /// Guards against duplicate webhook processing (idempotency marker).
+  paymentSettledAt  DateTime?
+
+  // ---- Self-custodial crypto settlement (USDC / USDT) ----
+  /// "solana" | "ethereum" | "base" | "arbitrum".
+  cryptoChain     String?
+  /// "USDC" | "USDT".
+  cryptoAsset     String?
+  /// On-chain transaction hash/signature that settled the order. Unique so the
+  /// same transfer can never be replayed to settle two bookings.
+  cryptoTxHash    String? @unique
+  /// The amount observed on-chain, in the token's smallest unit (6 decimals for
+  /// USDC/USDT), stored as a string to avoid any float rounding.
+  cryptoAmountRaw String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator   Creator          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  placement Placement        @relation(fields: [placementId], references: [id], onDelete: Restrict)
+  events    BookingEvent[]
+  metrics   CampaignMetric[]
+
+  /// A placement may appear at most once per order.
+  @@unique([reference, placementId])
+  @@index([reference])
+  @@index([creatorId, status])
+  @@index([placementId, status, startDate, endDate])
+  @@index([checkoutSessionId])
+  @@index([advertiserEmail])
+}
+
+/// Append-only audit trail for a booking.
+model BookingEvent {
+  id        String   @id @default(cuid())
+  bookingId String
+  /// e.g. created, payment_succeeded, approved, went_live, completed
+  type      String
+  message   String
+  /// Serialized JSON payload with extra context.
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, createdAt])
+}
+
+/// Daily performance metrics attributed to a live campaign.
+model CampaignMetric {
+  id            String   @id @default(cuid())
+  bookingId     String
+  date          DateTime
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  profileVisits Int      @default(0)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, date])
+  @@index([bookingId, date])
+}
+
+/// Transparent, dated snapshot of a creator's reach for a rolling window.
+/// Advertisers see these figures alongside their source + proof link.
+model AnalyticsSnapshot {
+  id        String @id @default(cuid())
+  creatorId String
+
+  /// Rolling window length in days (e.g. 30, 90).
+  periodDays Int
+  /// Inclusive window bounds the figures describe.
+  periodStart DateTime
+  periodEnd   DateTime
+
+  impressions     Int
+  profileVisits   Int
+  engagements     Int
+  followers       Int
+  followersGained Int @default(0)
+  linkClicks      Int @default(0)
+  posts           Int @default(0)
+
+  // ---- Engagement breakdown, exactly as X Analytics reports it ----
+  likes     Int @default(0)
+  replies   Int @default(0)
+  reposts   Int @default(0)
+  bookmarks Int @default(0)
+  shares    Int @default(0)
+
+  /// Followers with a paid verification badge (a proxy for buying power).
+  verifiedFollowers Int @default(0)
+  /// Followers X classes as active in the window.
+  activeFollowers   Int @default(0)
+
+  /// Engagement rate in basis points (10000 = 100%), as X reports it.
+  engagementRateBps Int @default(0)
+
+  // ---- Period-over-period change, in basis points. Signed. ----
+  // X shows these as the "↑ 797%" / "↓ -51%" chips next to each metric. Stored
+  // in basis points so a 797% rise is 79700 and no float rounding creeps in.
+  impressionsChangeBps    Int?
+  engagementsChangeBps    Int?
+  engagementRateChangeBps Int?
+  profileVisitsChangeBps  Int?
+  likesChangeBps          Int?
+  repliesChangeBps        Int?
+  repostsChangeBps        Int?
+  bookmarksChangeBps      Int?
+  sharesChangeBps         Int?
+
+  /// Where the numbers came from, e.g. "X Analytics export".
+  source String @default("X Analytics")
+  /// Public proof (screenshot) backing the figures.
+  proofUrl String?
+  /// True once the creator has attached verifiable proof.
+  isVerified Boolean @default(false)
+
+  capturedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  creator Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([creatorId, periodDays, periodEnd])
+  @@index([creatorId, periodDays])
+}
+
+/// One day of creator-level reach, used to draw the daily impression chart on
+/// the analytics page. Independent of any booking.
+model CreatorDailyMetric {
+  id        String   @id @default(cuid())
+  creatorId String
+  /// UTC midnight for the day these figures describe.
+  date      DateTime
+
+  impressions    Int @default(0)
+  engagements    Int @default(0)
+  /// Net follower change for the day; may be negative.
+  followersDelta Int @default(0)
+  posts          Int @default(0)
+  replies        Int @default(0)
+
+  creator Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([creatorId, date])
+  @@index([creatorId, date])
+}
+
+/// Audience composition breakdown shown on the analytics page.
+model AudienceSegment {
+  id        String @id @default(cuid())
+  creatorId String
+  /// Grouping: country | interest | role | device
+  category  String
+  label     String
+  /// Share of audience in basis points (10000 = 100%) to avoid float drift.
+  shareBps  Int
+  sortOrder Int    @default(0)
+
+  creator Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId, category])
+}
+
+/// Social proof from past advertisers.
+model Testimonial {
+  id          String  @id @default(cuid())
+  creatorId   String
+  author      String
+  role        String
+  quote       String
+  avatarUrl   String?
+  sortOrder   Int     @default(0)
+  isPublished Boolean @default(true)
+
+  creator Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId, isPublished])
+}
