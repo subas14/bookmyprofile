@@ -199,6 +199,7 @@ export function ButtonLink({
   className,
   children,
   external,
+  onClick,
 }: {
   href: string;
   variant?: ButtonVariant;
@@ -206,6 +207,8 @@ export function ButtonLink({
   className?: string;
   children: ReactNode;
   external?: boolean;
+  /** Optional click handler, e.g. to dismiss the mobile nav drawer on tap. */
+  onClick?: () => void;
 }) {
   if (external) {
     return (
@@ -214,13 +217,18 @@ export function ButtonLink({
         target="_blank"
         rel="noopener noreferrer"
         className={buttonClass(variant, size, className)}
+        onClick={onClick}
       >
         {children}
       </a>
     );
   }
   return (
-    <Link href={href} className={buttonClass(variant, size, className)}>
+    <Link
+      href={href}
+      className={buttonClass(variant, size, className)}
+      onClick={onClick}
+    >
       {children}
     </Link>
   );

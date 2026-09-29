@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 import { prisma } from "@/lib/prisma";
 import { PRIMARY_CREATOR_SLUG } from "@/lib/env";
 import type { PlacementKind } from "@/lib/domain";
@@ -13,7 +15,62 @@ export type CreatorProfile = NonNullable<
   Awaited<ReturnType<typeof getCreatorBySlug>>
 >;
 
-export async function getCreatorBySlug(slug: string) {
+/**
+ * Cache lifetime for the creator profile, in seconds.
+ *
+ * The profile (bio, placements, published analytics snapshots, testimonials)
+ * changes rarely, but the query joins five relations and — against a remote
+ * Neon database — costs several seconds cold. Serving it from the data cache
+ * takes the public pages from multi-second waits to a local network round-trip.
+ * Bust it early with `revalidateTag("creator")` after an admin edit or seed.
+ */
+export const CREATOR_CACHE_SECONDS = 300;
+export const CREATOR_CACHE_TAG = "creator";
+
+/**
+ * Date fields carried by the creator profile and its relations.
+ *
+ * `unstable_cache` persists results as JSON, so `Date` values return as ISO
+ * strings on a cache hit. Rendering code relies on real `Date`s (e.g.
+ * `snapshotFor` calls `.getTime()`, and `formatDate` expects a `Date`), so the
+ * cached payload is walked and these keys revived. Keyed by field name rather
+ * than by sniffing string shapes, so genuine text fields are never touched.
+ */
+const CREATOR_DATE_KEYS = new Set([
+  "joinedAt",
+  "createdAt",
+  "updatedAt",
+  "periodStart",
+  "periodEnd",
+  "capturedAt",
+  "date",
+]);
+
+/** Recursively restores `Date` objects on a cached (JSON-deserialised) value. */
+function reviveCreatorDates<T>(value: T): T {
+  if (value === null || typeof value !== "object") return value;
+
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      value[i] = reviveCreatorDates(value[i]);
+    }
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of Object.keys(record)) {
+    const child = record[key];
+    if (typeof child === "string" && CREATOR_DATE_KEYS.has(key)) {
+      record[key] = new Date(child);
+    } else if (child !== null && typeof child === "object") {
+      record[key] = reviveCreatorDates(child);
+    }
+  }
+  return value;
+}
+
+/** The uncached, expensive five-relation profile query. */
+function fetchCreatorBySlug(slug: string) {
   return prisma.creator.findFirst({
     where: { slug, isActive: true },
     include: {
@@ -36,6 +93,19 @@ export async function getCreatorBySlug(slug: string) {
       },
     },
   });
+}
+
+const getCreatorBySlugCached = unstable_cache(
+  (slug: string) => fetchCreatorBySlug(slug),
+  ["creator-by-slug"],
+  { revalidate: CREATOR_CACHE_SECONDS, tags: [CREATOR_CACHE_TAG] },
+);
+
+export async function getCreatorBySlug(slug: string) {
+  const creator = await getCreatorBySlugCached(slug);
+  // Revive on every read: a no-op on a fresh miss (values are real `Date`s),
+  // and the string→`Date` restoration on a hit.
+  return reviveCreatorDates(creator);
 }
 
 /**

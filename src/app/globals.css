@@ -126,6 +126,9 @@
 
   --font-sans: var(--font-sans-app);
   --font-mono: var(--font-mono-app);
+
+  /* Extra-small breakpoint for very narrow phones (below the 640px `sm`). */
+  --breakpoint-xs: 26rem;
 }
 
 * {

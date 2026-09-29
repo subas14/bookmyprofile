@@ -6,6 +6,8 @@
  *  - settling payment moves it into the review queue and blocks the slot
  *  - replayed webhooks are idempotent
  *  - a conflicting booking for the same slot/term is rejected
+ *  - two unpaid orders for the same single-tenant slot cannot BOTH settle
+ *    (the later settlement is cancelled for refund, not double-booked)
  *  - back-to-back terms are allowed
  *  - illegal status transitions are refused
  *
@@ -64,7 +66,9 @@ async function main() {
 
   const start = todayUtc();
   const startStr = toDateInputValue(start);
-  const slot = "cover-bottom-right";
+  // A single-tenant cover half (maxConcurrent = 1) so the conflict checks below
+  // are deterministic.
+  const slot = "cover-left";
 
   // --- 1. Create an unpaid booking ----------------------------------------
   const booking = await createBooking({
@@ -76,7 +80,9 @@ async function main() {
     ...ADVERTISER,
   });
   check("booking created with one row", booking.ids.length, 1);
-  check("2 months of a $50 slot = $100", booking.totalAmountCents, 10_000);
+  // Cover half is $99/mo; 2 months is below the 3-month discount tier and a
+  // single slot earns no bundle discount, so the total is a flat 2 x $99.
+  check("2 months of a $99 slot = $198", booking.totalAmountCents, 19_800);
 
   const created = await prisma.booking.findUniqueOrThrow({
     where: { id: booking.ids[0] },
@@ -179,15 +185,16 @@ async function main() {
   // --- 7. Multi-placement order shares one reference and sums correctly ---
   const bundle = await createBooking({
     creatorSlug: creator.slug,
-    slotKeys: ["cover-top-left", "cover-top-right"],
+    slotKeys: ["cover-right", "bio-link"],
     months: 1,
     startDate: startStr,
     includePromoPost: false,
     ...ADVERTISER,
   });
   check("bundle creates a row per placement", bundle.ids.length, 2);
-  // 2 x $50 with a 5% two-slot bundle discount = $95.
-  check("bundle total", bundle.totalAmountCents, 9_500);
+  // $99 cover half + $89 bio link = $188 subtotal, less a 5% two-slot bundle
+  // discount ($9.40) = $178.60.
+  check("bundle total", bundle.totalAmountCents, 17_860);
 
   const bundleRows = await prisma.booking.findMany({
     where: { reference: bundle.reference },
@@ -195,6 +202,74 @@ async function main() {
   });
   const summed = bundleRows.reduce((sum, row) => sum + row.totalAmountCents, 0);
   check("row totals sum to the charged amount", summed, bundle.totalAmountCents);
+
+  // --- 8. Oversell guard: two unpaid orders, same single-tenant slot -------
+  // Pending bookings do not reserve inventory, so both are allowed to reach
+  // checkout. Whoever settles first wins the slot; the later settlement must
+  // be cancelled (for refund), never admitted to the review queue.
+  const farStart = toDateInputValue(addMonthsUtc(start, 24));
+  const first = await createBooking({
+    creatorSlug: creator.slug,
+    slotKeys: [slot],
+    months: 1,
+    startDate: farStart,
+    includePromoPost: false,
+    ...ADVERTISER,
+  });
+  const second = await createBooking({
+    creatorSlug: creator.slug,
+    slotKeys: [slot],
+    months: 1,
+    startDate: farStart,
+    includePromoPost: false,
+    ...ADVERTISER,
+  });
+  check(
+    "two pending orders exist for the same single-tenant slot",
+    first.reference !== second.reference,
+    true,
+  );
+
+  const firstPaid = await markOrderPaid({
+    reference: first.reference,
+    paymentId: "pay_first",
+  });
+  check("first settlement admits the slot", firstPaid.settled, 1);
+  check("first settlement not oversold", firstPaid.oversold ?? 0, 0);
+
+  const secondPaid = await markOrderPaid({
+    reference: second.reference,
+    paymentId: "pay_second",
+  });
+  check("second settlement admits nothing", secondPaid.settled, 0);
+  check("second settlement flagged oversold", secondPaid.oversold ?? 0, 1);
+
+  const firstRow = await prisma.booking.findFirstOrThrow({
+    where: { reference: first.reference },
+    select: { status: true },
+  });
+  const secondRow = await prisma.booking.findFirstOrThrow({
+    where: { reference: second.reference },
+    select: { status: true, paymentSettledAt: true },
+  });
+  check("winner is in review", firstRow.status, "AWAITING_REVIEW");
+  check("loser is cancelled", secondRow.status, "CANCELLED");
+  check(
+    "loser payment still recorded for refund",
+    secondRow.paymentSettledAt !== null,
+    true,
+  );
+
+  const farAvail = await availabilityForTerm(
+    creator.id,
+    addMonthsUtc(start, 24),
+    1,
+  );
+  check(
+    "slot held by exactly one paid order",
+    farAvail[slot].overlapping,
+    1,
+  );
 
   await cleanup();
 

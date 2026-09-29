@@ -86,5 +86,27 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ settled: true, reference: normalizedReference });
+  // The payment landed on-chain, but every placement in the order was already
+  // taken for the term by an order that settled first. The payment is recorded
+  // and the order cancelled so it can be refunded, not silently double-booked.
+  if (settlement.oversold && settlement.settled === 0) {
+    return NextResponse.json(
+      {
+        settled: false,
+        oversold: true,
+        reference: normalizedReference,
+        error:
+          "Your payment was received, but the placement was just booked by " +
+          "someone else for those dates. Your order has been cancelled and " +
+          "will be refunded — quote your reference if you have any questions.",
+      },
+      { status: 409 },
+    );
+  }
+
+  return NextResponse.json({
+    settled: true,
+    reference: normalizedReference,
+    oversold: settlement.oversold ?? 0,
+  });
 }

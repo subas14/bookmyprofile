@@ -1,8 +1,11 @@
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import type { BookingRequest } from "@/lib/validation";
 import { LAUNCH_SPECIAL, quote, type PricingQuote } from "@/lib/pricing";
 import { startOfUtcDay, termEndDate, todayUtc } from "@/lib/dates";
 import {
+  INVENTORY_BLOCKING_STATUSES,
   PROMO_POST_SLOT_KEY,
   isLaunchTerm,
   type BookingStatus,
@@ -324,16 +327,73 @@ export async function attachCheckoutSession(
 }
 
 /**
+ * Rows of an order that CANNOT be admitted to the review queue on settlement
+ * because their placement is already at `maxConcurrent` for the term, held by
+ * *other* orders whose payment settled first.
+ *
+ * Pending bookings intentionally do not reserve inventory, so two advertisers
+ * can both reach checkout for the same single-tenant slot. Whoever settles
+ * first wins the slot; a later settlement for the same slot/term is oversold
+ * and must be routed to CANCELLED (with a refund trail) rather than blindly
+ * entering AWAITING_REVIEW. Run inside the settlement transaction so the
+ * capacity read and the status write are atomic.
+ */
+async function oversoldRowIds(
+  tx: Prisma.TransactionClient,
+  reference: string,
+  rows: { id: string; placementId: string; startDate: Date; endDate: Date }[],
+): Promise<Set<string>> {
+  const oversold = new Set<string>();
+  // Per placement, how many concurrent slots exist and how many are already
+  // consumed by other (already-settled) orders overlapping this term.
+  const seenThisOrder = new Map<string, number>();
+
+  for (const row of rows) {
+    const placement = await tx.placement.findUnique({
+      where: { id: row.placementId },
+      select: { maxConcurrent: true },
+    });
+    const max = placement?.maxConcurrent ?? 1;
+
+    const heldByOthers = await tx.booking.count({
+      where: {
+        reference: { not: reference },
+        placementId: row.placementId,
+        status: { in: [...INVENTORY_BLOCKING_STATUSES] },
+        startDate: { lt: row.endDate },
+        endDate: { gt: row.startDate },
+      },
+    });
+
+    // Rows within this same order also consume capacity as we admit them.
+    const alreadyAdmitted = seenThisOrder.get(row.placementId) ?? 0;
+    if (heldByOthers + alreadyAdmitted >= max) {
+      oversold.add(row.id);
+    } else {
+      seenThisOrder.set(row.placementId, alreadyAdmitted + 1);
+    }
+  }
+
+  return oversold;
+}
+
+/**
  * Settles payment for an order and moves it into the creator's review queue.
  *
  * Idempotent: Dodo retries webhooks, so rows already carrying
  * `paymentSettledAt` are skipped.
+ *
+ * Oversold protection: a row whose placement is already full for the term
+ * (another order settled first) is still marked paid — so the payment is on
+ * record and refundable — but routed to CANCELLED with a `payment_oversold`
+ * event instead of AWAITING_REVIEW, so a single-tenant slot is never held by
+ * two paid orders at once.
  */
 export async function markOrderPaid(params: {
   bookingId?: string;
   reference?: string;
   paymentId?: string;
-}): Promise<{ settled: number; reference: string | null }> {
+}): Promise<{ settled: number; reference: string | null; oversold?: number }> {
   const where = params.reference
     ? { reference: params.reference }
     : params.bookingId
@@ -349,38 +409,53 @@ export async function markOrderPaid(params: {
 
   const rows = await prisma.booking.findMany({
     where: { reference: anchor.reference, paymentSettledAt: null },
-    select: { id: true },
+    select: { id: true, placementId: true, startDate: true, endDate: true },
   });
   if (rows.length === 0) {
     return { settled: 0, reference: anchor.reference };
   }
 
   const now = new Date();
-  await prisma.$transaction(async (tx) => {
-    for (const row of rows) {
-      await tx.booking.update({
-        where: { id: row.id },
-        data: {
-          status: "AWAITING_REVIEW",
-          paidAt: now,
-          paymentSettledAt: now,
-          paymentId: params.paymentId,
-        },
-      });
-      await tx.bookingEvent.create({
-        data: {
-          bookingId: row.id,
-          type: "payment_succeeded",
-          message: "Payment confirmed, awaiting creator review",
-          metadata: params.paymentId
-            ? JSON.stringify({ paymentId: params.paymentId })
-            : null,
-        },
-      });
-    }
-  });
+  let oversoldCount = 0;
+  await prisma.$transaction(
+    async (tx) => {
+      const oversold = await oversoldRowIds(tx, anchor.reference, rows);
+      oversoldCount = oversold.size;
 
-  return { settled: rows.length, reference: anchor.reference };
+      for (const row of rows) {
+        const isOversold = oversold.has(row.id);
+        await tx.booking.update({
+          where: { id: row.id },
+          data: {
+            // Always record the payment so it is auditable and refundable.
+            status: isOversold ? "CANCELLED" : "AWAITING_REVIEW",
+            paidAt: now,
+            paymentSettledAt: now,
+            paymentId: params.paymentId,
+          },
+        });
+        await tx.bookingEvent.create({
+          data: {
+            bookingId: row.id,
+            type: isOversold ? "payment_oversold" : "payment_succeeded",
+            message: isOversold
+              ? "Payment confirmed but the placement was already taken for this term; order cancelled for refund."
+              : "Payment confirmed, awaiting creator review",
+            metadata: params.paymentId
+              ? JSON.stringify({ paymentId: params.paymentId })
+              : null,
+          },
+        });
+      }
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
+
+  return {
+    settled: rows.length - oversoldCount,
+    reference: anchor.reference,
+    oversold: oversoldCount,
+  };
 }
 
 /** Cancels the pending rows of an order after an unsuccessful payment. */
@@ -435,7 +510,12 @@ export async function settleCryptoOrder(params: {
   asset: string;
   txHash: string;
   amountRaw: string;
-}): Promise<{ settled: number; reference: string | null; alreadyUsed: boolean }> {
+}): Promise<{
+  settled: number;
+  reference: string | null;
+  alreadyUsed: boolean;
+  oversold?: number;
+}> {
   const anchor = await prisma.booking.findFirst({
     where: { reference: params.reference },
     select: { reference: true },
@@ -454,7 +534,7 @@ export async function settleCryptoOrder(params: {
 
   const rows = await prisma.booking.findMany({
     where: { reference: anchor.reference, paymentSettledAt: null },
-    select: { id: true },
+    select: { id: true, placementId: true, startDate: true, endDate: true },
   });
   if (rows.length === 0) {
     // Already settled (e.g. a double submit): treat as success, not a replay.
@@ -462,40 +542,52 @@ export async function settleCryptoOrder(params: {
   }
 
   const now = new Date();
+  let oversoldCount = 0;
   try {
-    await prisma.$transaction(async (tx) => {
-      for (const [index, row] of rows.entries()) {
-        await tx.booking.update({
-          where: { id: row.id },
-          data: {
-            status: "AWAITING_REVIEW",
-            paidAt: now,
-            paymentSettledAt: now,
-            paymentProvider: "crypto",
-            paymentId: params.txHash,
-            cryptoChain: params.chain,
-            cryptoAsset: params.asset,
-            // The unique tx hash can only sit on one row; anchor it to the
-            // first and leave the rest correlated by reference.
-            cryptoTxHash: index === 0 ? params.txHash : null,
-            cryptoAmountRaw: index === 0 ? params.amountRaw : null,
-          },
-        });
-        await tx.bookingEvent.create({
-          data: {
-            bookingId: row.id,
-            type: "payment_succeeded",
-            message: `Crypto payment confirmed on ${params.chain} (${params.asset})`,
-            metadata: JSON.stringify({
-              chain: params.chain,
-              asset: params.asset,
-              txHash: params.txHash,
-              amountRaw: params.amountRaw,
-            }),
-          },
-        });
-      }
-    });
+    await prisma.$transaction(
+      async (tx) => {
+        const oversold = await oversoldRowIds(tx, anchor.reference, rows);
+        oversoldCount = oversold.size;
+
+        for (const [index, row] of rows.entries()) {
+          const isOversold = oversold.has(row.id);
+          await tx.booking.update({
+            where: { id: row.id },
+            data: {
+              // Record the payment regardless so it is auditable/refundable;
+              // an oversold slot is cancelled rather than admitted to review.
+              status: isOversold ? "CANCELLED" : "AWAITING_REVIEW",
+              paidAt: now,
+              paymentSettledAt: now,
+              paymentProvider: "crypto",
+              paymentId: params.txHash,
+              cryptoChain: params.chain,
+              cryptoAsset: params.asset,
+              // The unique tx hash can only sit on one row; anchor it to the
+              // first and leave the rest correlated by reference.
+              cryptoTxHash: index === 0 ? params.txHash : null,
+              cryptoAmountRaw: index === 0 ? params.amountRaw : null,
+            },
+          });
+          await tx.bookingEvent.create({
+            data: {
+              bookingId: row.id,
+              type: isOversold ? "payment_oversold" : "payment_succeeded",
+              message: isOversold
+                ? `Crypto payment confirmed on ${params.chain} (${params.asset}) but the placement was already taken for this term; order cancelled for refund.`
+                : `Crypto payment confirmed on ${params.chain} (${params.asset})`,
+              metadata: JSON.stringify({
+                chain: params.chain,
+                asset: params.asset,
+                txHash: params.txHash,
+                amountRaw: params.amountRaw,
+              }),
+            },
+          });
+        }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   } catch (error) {
     // A unique-constraint race on cryptoTxHash means a concurrent request beat
     // us to it; surface as already-used rather than a 500.
@@ -510,7 +602,12 @@ export async function settleCryptoOrder(params: {
     throw error;
   }
 
-  return { settled: rows.length, reference: anchor.reference, alreadyUsed: false };
+  return {
+    settled: rows.length - oversoldCount,
+    reference: anchor.reference,
+    alreadyUsed: false,
+    oversold: oversoldCount,
+  };
 }
 
 /**

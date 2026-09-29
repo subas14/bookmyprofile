@@ -70,7 +70,7 @@ export function CampaignResults({ result }: { result: LookupResult }) {
               <StatusPill status={campaign.status} />
             </div>
 
-            <dl className="mt-5 grid grid-cols-3 gap-4 border-t border-line pt-5">
+            <dl className="mt-5 grid grid-cols-1 gap-4 border-t border-line pt-5 xs:grid-cols-3">
               <div>
                 <dt className="text-xs uppercase tracking-wider text-muted">
                   Impressions

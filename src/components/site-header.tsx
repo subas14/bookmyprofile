@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { BrandMark } from "@/components/brand-mark";
 import { ButtonArrow, ButtonLink } from "@/components/ui";
+import { MobileNav } from "@/components/mobile-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_LINKS = [
@@ -55,17 +56,14 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Link
-            href="/analytics"
-            className="rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground sm:block lg:hidden"
-          >
-            Analytics
-          </Link>
           <ThemeToggle />
+          {/* Primary CTA stays visible at every width. */}
           <ButtonLink href="/book" size="sm">
             Book a slot
             <ButtonArrow />
           </ButtonLink>
+          {/* Hamburger drawer holds the full nav below `lg`. */}
+          <MobileNav links={NAV_LINKS} />
         </div>
       </div>
     </header>
