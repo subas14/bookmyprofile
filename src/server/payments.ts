@@ -79,6 +79,11 @@ export async function createCheckoutSession(
       booking_id: input.bookingId,
       booking_reference: input.reference,
     },
+    // Lets the advertiser enter a Dodo discount code on the hosted checkout
+    // (e.g. a $28-off code to test a $29 product for $1).
+    feature_flags: {
+      allow_discount_code: true,
+    },
     return_url: `${appUrl()}/checkout/return?reference=${encodeURIComponent(
       input.reference,
     )}`,
