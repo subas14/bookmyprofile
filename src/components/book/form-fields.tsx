@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, cx } from "@/components/ui";
+import { StepHeader } from "@/components/book/step-header";
 
 /** Advertiser + campaign asset details (step 3 of the booking flow). */
 
@@ -64,7 +65,7 @@ const FIELDS: {
 ];
 
 const INPUT_CLASS =
-  "mt-2 w-full rounded-xl bg-panel px-4 py-2.5 text-sm ring-1 transition-shadow placeholder:text-muted/60 focus:ring-2 focus:ring-accent";
+  "mt-2 w-full rounded-xl bg-surface px-4 py-2.5 text-sm ring-1 transition-shadow placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent";
 
 export function FormFields({
   values,
@@ -77,10 +78,11 @@ export function FormFields({
 }) {
   return (
     <Card>
-      <h2 className="text-base font-semibold">3. Your details</h2>
-      <p className="mt-1 text-sm text-muted">
-        Used for your invoice and to set the placement live.
-      </p>
+      <StepHeader
+        step={3}
+        title="Your details"
+        description="Used for your invoice and to set the placement live."
+      />
 
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         {FIELDS.map((field) => {

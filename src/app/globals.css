@@ -15,17 +15,19 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --background: #fbf8f5;
+  /* Refined paper: cooler, cleaner neutrals so data reads crisply, keeping
+     a hint of warmth to sit with the terracotta accent. */
+  --background: #faf9f7;
   --surface: #ffffff;
-  --panel: #f4efe9;
-  --foreground: #191512;
-  --muted: #6d625a;
-  --faint: #978c82;
+  --panel: #f3f1ed;
+  --foreground: #16130f;
+  --muted: #645c54;
+  --faint: #8f877e;
 
-  --line: #e7ded4;
-  --line-strong: #d3c7b9;
-  --subtle: #f3ede6;
-  --subtle-strong: #eae1d7;
+  --line: #e6e1da;
+  --line-strong: #d2cbc1;
+  --subtle: #f2efea;
+  --subtle-strong: #e7e2da;
 
   --accent: #c2593a;
   --accent-hover: #a94729;
@@ -57,25 +59,29 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --background: #100f0e;
-  --surface: #191716;
-  --panel: #211e1c;
-  --foreground: #f3eee9;
-  --muted: #a89e94;
-  --faint: #7d7469;
+  /* Neutral graphite rather than warm brown: reads as a product surface, not
+     a dimmed paper page. Three clear elevation steps (background < surface <
+     panel) so cards separate without heavy borders or glows. */
+  --background: #0b0b0c;
+  --surface: #141415;
+  --panel: #1b1b1d;
+  --foreground: #ececec;
+  --muted: #a3a3a8;
+  --faint: #737378;
 
-  --line: #2c2826;
-  --line-strong: #3d3835;
-  --subtle: #221f1d;
-  --subtle-strong: #2d2926;
+  --line: #242427;
+  --line-strong: #323236;
+  --subtle: #18181a;
+  --subtle-strong: #222225;
 
-  --accent: #e07a55;
-  --accent-hover: #ec8d69;
-  --accent-fg: #1a1110;
-  --accent-wash: #2b1d17;
+  /* Accent slightly desaturated so it does not vibrate on near-black. */
+  --accent: #e27a54;
+  --accent-hover: #ec8f6c;
+  --accent-fg: #150c08;
+  --accent-wash: #261812;
 
   /* Text selection: opaque so it reads the same over paper, cards, panels. */
-  --selection: #7c3a22;
+  --selection: #6b3320;
   --selection-fg: #ffece3;
 
   /* No inversion in dark mode: featured panels read as surface cards
@@ -84,15 +90,34 @@
   --invert-fg: var(--foreground);
   --invert-line: var(--accent);
 
-  --success: #71bd8e;
-  --success-wash: #1a2620;
-  --warning: #d9a84a;
-  --warning-wash: #2a2317;
-  --danger: #e8705a;
-  --danger-wash: #2c1a17;
+  --success: #6cc08f;
+  --success-wash: #13221a;
+  --warning: #dcae52;
+  --warning-wash: #262014;
+  --danger: #ec7660;
+  --danger-wash: #2a1714;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow-pop: 0 18px 42px -18px rgba(0, 0, 0, 0.75);
+  /* A 1px top highlight gives cards a subtle edge on black, where a drop
+     shadow alone is invisible. */
+  --shadow-card:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-pop:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 20px 44px -18px rgba(0, 0, 0, 0.85);
+}
+
+/* Dark-only refinements. Textures that sit nicely on paper read as noise on
+   near-black, so they are toned down rather than removed. */
+[data-theme="dark"] .bmp-paper {
+  opacity: 0.18;
+}
+
+[data-theme="dark"] .bmp-grid-bg {
+  opacity: 0.35;
+}
+
+[data-theme="dark"] img {
+  /* Takes the glare off bright logos and avatars on a black page. */
+  filter: brightness(0.94);
 }
 
 @theme inline {
@@ -225,6 +250,24 @@ h3 {
   );
   background-size: 18px 18px;
   opacity: 0.35;
+}
+
+/*
+ * Hero backdrop: a faint square grid fading out toward the bottom, so the
+ * data-forward hero reads like a dashboard sheet rather than a flat page.
+ */
+.bmp-grid-bg {
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 44px 44px;
+  opacity: 0.55;
+  mask-image: radial-gradient(
+    ellipse 80% 70% at 30% 0%,
+    black 30%,
+    transparent 75%
+  );
 }
 
 /* Live indicator. */

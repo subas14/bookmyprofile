@@ -278,9 +278,36 @@ export function BookingForm({
         <FormFields values={form} errors={fieldErrors} onChange={updateField} />
       </div>
 
-      <div className="lg:sticky lg:top-24 lg:h-fit">
-        <Card>
-          <h2 className="text-base font-semibold">Order summary</h2>
+      {/*
+        Phones: a sticky running total that jumps to the summary (and its
+        submit button). Display only: it reads the server quote already in
+        state and never submits by itself.
+      */}
+      {quote && selected.length > 0 ? (
+        <a
+          href="#order-summary"
+          className="sticky bottom-3 z-30 flex items-center justify-between gap-3 rounded-2xl border border-line bg-foreground px-4 py-3 text-background shadow-[var(--shadow-pop)] lg:hidden"
+        >
+          <span className="text-sm">
+            <span className="block text-xs opacity-70">Total due today</span>
+            <span className="text-lg font-bold tabular-nums">
+              {formatMoney(quote.totalCents)}
+            </span>
+          </span>
+          <span className="text-sm font-semibold">Review &amp; pay &darr;</span>
+        </a>
+      ) : null}
+
+      <div id="order-summary" className="lg:sticky lg:top-24 lg:h-fit">
+        <Card className="shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold">Order summary</h2>
+            {selected.length > 0 ? (
+              <span className="text-xs tabular-nums text-muted">
+                {selected.length} placement{selected.length === 1 ? "" : "s"}
+              </span>
+            ) : null}
+          </div>
           <div className="mt-5">
             <OrderSummary quote={quote} loading={quoting} />
           </div>
@@ -308,9 +335,25 @@ export function BookingForm({
           </Button>
 
           {paymentsConfigured ? (
-            <p className="mt-3 text-xs leading-relaxed text-muted">
-              Secure checkout by Dodo Payments. Card, wallet and crypto accepted.
-              You will receive an invoice by email.
+            <p className="mt-3 flex gap-2 text-xs leading-relaxed text-muted">
+              <svg
+                aria-hidden
+                width="14"
+                height="14"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="mt-px shrink-0 text-success"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 1a4.5 4.5 0 0 0-4.5 4.5V8H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm2.5 7V5.5a2.5 2.5 0 0 0-5 0V8h5Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span>
+                Secure checkout by Dodo Payments. Card, wallet and crypto
+                accepted. You will receive an invoice by email.
+              </span>
             </p>
           ) : (
             <p className="mt-3 text-xs leading-relaxed text-warning">

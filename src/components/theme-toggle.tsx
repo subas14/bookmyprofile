@@ -17,9 +17,11 @@ type Theme = "light" | "dark";
 
 /**
  * Inline script string injected before hydration. Kept in sync with
- * THEME_STORAGE_KEY. Falls back to the OS preference when nothing is stored.
+ * THEME_STORAGE_KEY. Light is the default: dark only applies once a visitor
+ * has chosen it with the toggle (stored in localStorage), never from the OS
+ * preference alone.
  */
-export const THEME_INIT_SCRIPT = `(function(){try{var k="${THEME_STORAGE_KEY}";var s=localStorage.getItem(k);var m=window.matchMedia("(prefers-color-scheme: dark)").matches;var t=s==="light"||s==="dark"?s:(m?"dark":"light");document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`;
+export const THEME_INIT_SCRIPT = `(function(){try{var s=localStorage.getItem("${THEME_STORAGE_KEY}");document.documentElement.setAttribute("data-theme",s==="dark"?"dark":"light");}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`;
 
 function readTheme(): Theme {
   const attr = document.documentElement.getAttribute("data-theme");

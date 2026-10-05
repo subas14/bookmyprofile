@@ -27,7 +27,7 @@ export function OrderReceipt({
   isPaid: boolean;
 }) {
   return (
-    <Card className="mt-10">
+    <Card className="mt-10 shadow-[var(--shadow-card)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wider text-muted">
@@ -70,15 +70,37 @@ export function OrderReceipt({
         </div>
       </dl>
 
-      <div className="mt-6 rounded-xl bg-panel p-4 ring-1 ring-line">
-        <p className="text-sm font-medium">What happens next</p>
-        <ol className="mt-2.5 space-y-1.5 text-sm text-muted">
-          <li>1. {isPaid ? "Payment confirmed." : "Payment is confirmed."}</li>
-          <li>2. I review the booking and your creative.</li>
-          <li>
-            3. The placement goes live on your start date and you receive an
-            email.
-          </li>
+      <div className="mt-6 rounded-xl bg-panel p-4 ring-1 ring-line sm:p-5">
+        <p className="text-sm font-semibold">What happens next</p>
+        <ol className="mt-4 space-y-3 text-sm">
+          {[
+            {
+              label: isPaid ? "Payment confirmed" : "Payment is confirmed",
+              done: isPaid,
+            },
+            { label: "I review the booking and your creative", done: false },
+            {
+              label:
+                "The placement goes live on your start date and you receive an email",
+              done: false,
+            },
+          ].map((step, index) => (
+            <li key={step.label} className="flex items-start gap-3">
+              <span
+                aria-hidden
+                className={
+                  step.done
+                    ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-success/30 bg-success-wash text-[11px] font-bold text-success"
+                    : "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line-strong font-mono text-[11px] font-semibold text-muted"
+                }
+              >
+                {step.done ? "✓" : index + 1}
+              </span>
+              <span className={step.done ? "pt-0.5 text-foreground" : "pt-0.5 text-muted"}>
+                {step.label}.
+              </span>
+            </li>
+          ))}
         </ol>
       </div>
     </Card>

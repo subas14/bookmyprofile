@@ -47,17 +47,38 @@ export default async function CheckoutReturnPage({
     <Section className="py-20">
       <div className="mx-auto max-w-2xl">
         <div className="text-center">
+          {/* Green check only once payment is actually recorded; a neutral
+              clock while the webhook is still in flight. */}
           <span
             aria-hidden
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-success/30 bg-success-wash text-success"
+            className={
+              isPaid
+                ? "mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-success/30 bg-success-wash text-success"
+                : "mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-warning/30 bg-warning-wash text-warning"
+            }
           >
-            <svg width="26" height="26" viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 0 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0Z"
-                clipRule="evenodd"
-              />
-            </svg>
+            {isPaid ? (
+              <svg width="26" height="26" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 0 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+            )}
           </span>
 
           <h1 className="mt-6 text-balance text-3xl font-bold tracking-tight sm:text-4xl">

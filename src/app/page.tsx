@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { HeroSection } from "@/components/home/hero-section";
 import { InventorySection } from "@/components/home/inventory-section";
 import { HowItWorksSection } from "@/components/home/how-it-works-section";
+import { TransparencySection } from "@/components/home/transparency-section";
 import { AudienceSection } from "@/components/home/audience-section";
+import { MobileBookBar } from "@/components/home/mobile-book-bar";
 import { DiscountsSection } from "@/components/home/discounts-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { FinalCtaSection } from "@/components/home/final-cta-section";
@@ -31,9 +33,8 @@ export default async function HomePage() {
   const creator = await getPrimaryCreator();
   if (!creator) notFound();
 
-  // The 7-day window shows current form; the 90-day window is the basis for
-  // every "per month" and CPM claim so a single viral post cannot inflate it.
-  const recent = snapshotFor(creator.analyticsSnapshots, 7);
+  // The 90-day window is the basis for every "per month" and CPM claim so a
+  // single viral post cannot inflate it. Detailed analytics live on /analytics.
   const billing = snapshotFor(creator.analyticsSnapshots, BILLING_WINDOW_DAYS);
   const perMonth = monthlyImpressions(billing);
   const availability = await availabilityForTerm(creator.id, todayUtc(), 1);
@@ -41,7 +42,6 @@ export default async function HomePage() {
   const grouped = groupPlacements(creator.placements);
   const coverSlots = grouped.COVER_SLOT;
   const bioLink = grouped.BIO_LINK[0];
-  const promoPost = grouped.PROMO_POST[0];
 
   const openCoverSlots = coverSlots.filter(
     (slot) => availability[slot.slotKey]?.available,
@@ -50,15 +50,21 @@ export default async function HomePage() {
   const bioAvailable = bioAvailability?.available ?? false;
   // The bio holds several product links at once, so count open lines rather
   // than treating it as a single yes/no slot.
-  const bioLinksTaken = bioAvailability?.overlapping ?? 0;
   const bioLinksOpen = bioAvailability
     ? Math.max(0, bioAvailability.maxConcurrent - bioAvailability.overlapping)
     : 0;
   const openCount = openCoverSlots + bioLinksOpen;
+  const bioLinksTaken = bioAvailability?.overlapping ?? 0;
 
+  // Slots fully booked right now, drawn as taken in the hero profile mock.
   const takenSlots = creator.placements
     .filter((placement) => availability[placement.slotKey]?.available === false)
     .map((placement) => placement.slotKey);
+
+  // Printed directly on each cover half in the hero mock.
+  const coverPrices = Object.fromEntries(
+    coverSlots.map((slot) => [slot.slotKey, slot.priceMonthlyCents]),
+  );
 
   // Effective CPM of the cheapest slot against a normalised month: the
   // clearest value argument we can give an advertiser.
@@ -68,10 +74,9 @@ export default async function HomePage() {
   );
   const cpm = costPerMille(cheapestSlotCents, perMonth);
 
-  // Printed directly on each cover half in the hero mock.
-  const coverPrices = Object.fromEntries(
-    coverSlots.map((slot) => [slot.slotKey, slot.priceMonthlyCents]),
-  );
+  // "Verified analytics" is only claimed when both the creator and the
+  // published 90-day snapshot are marked verified in the database.
+  const analyticsVerified = Boolean(creator.isVerified && billing?.isVerified);
 
   return (
     <>
@@ -79,46 +84,47 @@ export default async function HomePage() {
         displayName={creator.displayName}
         handle={creator.handle}
         headline={creator.headline}
-        bio={creator.bio}
         avatarUrl={creator.avatarUrl}
-        location={creator.location}
-        joinedAt={creator.joinedAt}
         profileUrl={creator.profileUrl}
         followerCount={creator.followerCount}
-        totalPosts={creator.totalPosts}
-        recent={recent}
         billing={billing}
-        daily={creator.dailyMetrics}
         monthlyImpressions={perMonth}
         openCount={openCount}
-        takenSlots={takenSlots}
-        bioLinksTaken={bioLinksTaken}
         cheapestSlotCents={cheapestSlotCents}
         cpm={cpm}
+        takenSlots={takenSlots}
+        bioLinksTaken={bioLinksTaken}
         coverPrices={coverPrices}
-        coverPriceCents={coverSlots[0]?.priceMonthlyCents}
         bioLinkPriceCents={bioLink?.priceMonthlyCents}
       />
 
       <InventorySection
         coverSlots={coverSlots}
         bioLink={bioLink}
-        promoPost={promoPost}
+        profileUrl={creator.profileUrl}
+        handle={creator.handle}
         availability={availability}
-        openCoverSlots={openCoverSlots}
         bioAvailable={bioAvailable}
         bioLinksOpen={bioLinksOpen}
       />
 
       <HowItWorksSection />
 
-      <AudienceSection snapshot={billing} />
+      <TransparencySection
+        snapshotSource={billing?.source}
+        snapshotEnd={billing?.periodEnd}
+        isVerified={analyticsVerified}
+      />
+
+      <AudienceSection segments={creator.audienceSegments} snapshot={billing} />
 
       <DiscountsSection />
 
       <TestimonialsSection testimonials={creator.testimonials} />
 
       <FinalCtaSection monthlyImpressions={perMonth} openCount={openCount} />
+
+      <MobileBookBar openCount={openCount} fromCents={cheapestSlotCents} />
     </>
   );
 }

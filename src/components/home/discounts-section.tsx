@@ -1,4 +1,6 @@
-import { ButtonLink, Card, Section, SectionHeading } from "@/components/ui";
+import Link from "next/link";
+
+import { Section, SectionHeading, cx } from "@/components/ui";
 import { BUNDLE_DISCOUNT_TIERS, TERM_DISCOUNT_TIERS } from "@/lib/pricing";
 
 /** Explains the automatic term and bundle discounts. */
@@ -10,67 +12,67 @@ export function DiscountsSection() {
     (a, b) => a.minSlots - b.minSlots,
   );
 
+  // Compact: one row of term tiers and one row of bundle tiers, both read
+  // straight from the pricing engine so the copy can never drift from checkout.
   return (
-    <div className="border-y border-line bg-panel">
-      <Section>
-        <SectionHeading
-          eyebrow="Bundles & discounts"
-          title="The longer you stay, the less you pay."
-          description="Discounts are applied automatically at checkout. Book more than one placement and a bundle discount stacks on top of your term discount."
-        />
-
-        <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {termTiers.map((tier) => (
-            <Card
-              key={tier.minMonths}
-              className={
-                tier.minMonths === 12
-                  ? "border-accent/35 bg-accent-wash"
-                  : undefined
-              }
+    <Section className="py-16 sm:py-20">
+      <div className="grid gap-8 lg:grid-cols-[1fr_1.6fr] lg:items-center">
+        <div>
+          <SectionHeading
+            align="left"
+            eyebrow="Discounts"
+            title="Stay longer, pay less."
+            description="Applied automatically at checkout. Bundle discounts stack on top of term discounts."
+          />
+          <Link
+            href="/pricing"
+            className="group mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors hover:text-foreground"
+          >
+            See full pricing
+            <span
+              aria-hidden
+              className="transition-transform group-hover:translate-x-0.5"
             >
-              <p className="text-sm text-muted">
-                {tier.minMonths} month{tier.minMonths === 1 ? "" : "s"}
-              </p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums">
-                {tier.bps === 0 ? "List" : `${tier.bps / 100}%`}
-              </p>
-              <p className="mt-1 text-xs text-muted">
-                {tier.bps === 0 ? "Standard rate" : "off every placement"}
-              </p>
-            </Card>
-          ))}
+              &rarr;
+            </span>
+          </Link>
         </div>
 
-        <div className="mt-5 rounded-2xl bg-surface p-6 ring-1 ring-line">
-          <p className="text-sm font-semibold">Bundle discount</p>
-          <p className="mt-1.5 text-sm text-muted">
-            Applied on top of your term discount when you book multiple
-            placements in one order.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
+        <div className="space-y-3">
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-4">
+            {termTiers.map((tier) => (
+              <div
+                key={tier.minMonths}
+                className={cx(
+                  "bg-surface px-4 py-4",
+                  tier.minMonths === 12 && "bg-accent-wash",
+                )}
+              >
+                <dt className="text-xs font-medium text-muted">
+                  {tier.minMonths} month{tier.minMonths === 1 ? "" : "s"}
+                </dt>
+                <dd className="mt-1 text-2xl font-bold tabular-nums tracking-tight">
+                  {tier.bps === 0 ? "List" : `−${tier.bps / 100}%`}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface px-4 py-3 text-sm">
+            <span className="font-semibold">Bundles</span>
             {bundleTiers.map((tier) => (
               <span
                 key={tier.minSlots}
-                className="rounded-xl bg-panel px-4 py-2.5 text-sm ring-1 ring-line"
+                className="rounded-lg bg-subtle px-2.5 py-1 text-[13px]"
               >
-                <strong className="font-semibold">
-                  {tier.minSlots}+ placements
-                </strong>
-                <span className="ml-2 tabular-nums text-accent">
+                {tier.minSlots}+ placements{" "}
+                <span className="font-semibold tabular-nums text-success">
                   −{tier.bps / 100}%
                 </span>
               </span>
             ))}
           </div>
         </div>
-
-        <div className="mt-10 text-center">
-          <ButtonLink href="/pricing" variant="secondary">
-            See full pricing
-          </ButtonLink>
-        </div>
-      </Section>
-    </div>
+      </div>
+    </Section>
   );
 }

@@ -22,7 +22,7 @@ const NAV_LINKS = [
  */
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-background">
+    <header className="sticky top-0 z-40 border-b border-line bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         {/* Wordmark: the mark plays a tiny booking on loop. */}
         <Link
@@ -59,7 +59,8 @@ export function SiteHeader() {
           <ThemeToggle />
           {/* Primary CTA stays visible at every width. */}
           <ButtonLink href="/book" size="sm">
-            Book a slot
+            <span className="xs:hidden">Book</span>
+            <span className="hidden xs:inline">Book a placement</span>
             <ButtonArrow />
           </ButtonLink>
           {/* Hamburger drawer holds the full nav below `lg`. */}

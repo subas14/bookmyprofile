@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { Section } from "@/components/ui";
+import { Badge, Section } from "@/components/ui";
 import { CampaignLookup } from "@/components/campaigns/campaign-lookup";
 
 export const metadata: Metadata = {
@@ -20,19 +20,20 @@ export default async function CampaignsPage({
 
   return (
     <>
-      <div className="border-b border-line">
-        <Section className="py-16">
-          <h1 className="max-w-3xl text-balance text-4xl font-extrabold tracking-[-0.03em] sm:text-5xl">
+      <div className="border-b border-line bg-panel">
+        <Section className="py-10 sm:py-12">
+          <Badge tone="accent">Campaign tracking</Badge>
+          <h1 className="mt-5 max-w-3xl text-balance text-3xl font-extrabold tracking-[-0.03em] sm:text-[2.75rem]">
             Track your campaign.
           </h1>
-          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
             Status, dates and performance for anything you have booked, with no
             account required.
           </p>
         </Section>
       </div>
 
-      <Section className="py-12">
+      <Section className="py-10 sm:py-12">
         <div className="mx-auto max-w-3xl">
           <CampaignLookup initialReference={params.reference ?? ""} />
         </div>

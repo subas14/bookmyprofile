@@ -380,7 +380,7 @@ export function TrustItem({
     <div className="flex gap-3">
       <span
         aria-hidden
-        className="mt-1 h-fit rounded-full bg-success p-1 text-success ring-1 ring-success"
+        className="mt-1 h-fit rounded-full bg-success-wash p-1 text-success ring-1 ring-success/30"
       >
         <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
           <path

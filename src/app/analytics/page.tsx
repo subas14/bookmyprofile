@@ -160,7 +160,7 @@ export default async function AnalyticsPage({
       ) : null}
 
       {/* ---- Audience composition ---- */}
-      <Section className="py-12 sm:py-14">
+      <Section id="audience" className="py-12 sm:py-14">
         <div className="max-w-3xl">
           <h2 className="text-xl font-bold">Who is on the other side</h2>
           <p className="mt-2 text-[15px] leading-relaxed text-muted">

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { BrandMark } from "@/components/brand-mark";
+
 const FOOTER_SECTIONS = [
   {
     title: "Product",
@@ -30,12 +32,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-12 lg:flex-row lg:justify-between">
           <div className="max-w-sm">
             <div className="flex items-center gap-2.5">
-              <span
-                aria-hidden
-                className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-[13px] font-extrabold text-accent-fg"
-              >
-                BM
-              </span>
+              <BrandMark size={32} />
               <span className="text-[15px] font-bold tracking-tight">
                 BookMyProfile
               </span>

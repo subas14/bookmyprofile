@@ -12,6 +12,7 @@ import {
 } from "@/components/ui";
 import { DiscountTables } from "@/components/pricing/discount-tables";
 import { PricingTiers } from "@/components/pricing/pricing-tiers";
+import { PromoOffers } from "@/components/promo-offers";
 import {
   BILLING_WINDOW_DAYS,
   getPrimaryCreator,
@@ -23,7 +24,6 @@ import { todayUtc } from "@/lib/dates";
 import { costPerMille, formatMoney } from "@/lib/format";
 import {
   LAUNCH_SPECIAL,
-  PROMO_ADDON_DISCOUNT_BPS,
   quote,
   termMonthlyRateCents,
 } from "@/lib/pricing";
@@ -78,12 +78,6 @@ export default async function PricingPage() {
       ? [{ label: "Product link in bio", priceMonthlyCents: bioLink.priceMonthlyCents }]
       : []),
   ];
-
-  const promoBundled =
-    creator.promoPostPriceCents -
-    Math.round(
-      (creator.promoPostPriceCents * PROMO_ADDON_DISCOUNT_BPS) / 10_000,
-    );
 
   return (
     <>
@@ -267,26 +261,11 @@ export default async function PricingPage() {
           </div>
         </div>
 
-        <Card className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-bold">
-              Dedicated promo post
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-              A one-off post about your product, written in my voice and pinned
-              for 24 hours. {PROMO_ADDON_DISCOUNT_BPS / 100}% off when added to
-              any placement booking.
-            </p>
-          </div>
-          <div className="shrink-0 sm:text-right">
-            <p className="text-2xl font-semibold tabular-nums">
-              {formatMoney(creator.promoPostPriceCents)}
-            </p>
-            <p className="text-xs text-accent">
-              {formatMoney(promoBundled)} bundled
-            </p>
-          </div>
-        </Card>
+        <PromoOffers
+          profileUrl={creator.profileUrl}
+          handle={creator.handle}
+          className="mt-12"
+        />
       </Section>
 
       <DiscountTables takeover={takeover} />

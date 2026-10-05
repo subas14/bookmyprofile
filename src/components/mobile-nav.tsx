@@ -137,7 +137,7 @@ export function MobileNav({ links }: { links: NavLink[] }) {
 
             <div className="border-t border-line p-4">
               <ButtonLink href="/book" size="md" className="w-full" onClick={close}>
-                Book a slot
+                Book a placement
                 <ButtonArrow />
               </ButtonLink>
             </div>

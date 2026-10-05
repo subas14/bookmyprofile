@@ -54,7 +54,7 @@ export function CampaignLookup({
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="shadow-[var(--shadow-card)]">
         <form onSubmit={handleSubmit}>
           <h2 className="text-base font-semibold">Find your campaign</h2>
           <p className="mt-1 text-sm text-muted">
@@ -76,7 +76,7 @@ export function CampaignLookup({
                 onChange={(event) => setReference(event.target.value)}
                 placeholder="BMP-7KQ2F4"
                 required
-                className="mt-2 w-full rounded-xl bg-panel px-4 py-2.5 font-mono text-sm uppercase ring-1 ring-line transition-shadow placeholder:font-sans placeholder:normal-case placeholder:text-muted/60 focus:ring-2 focus:ring-accent"
+                className="mt-2 w-full rounded-xl bg-surface px-4 py-2.5 font-mono text-sm uppercase ring-1 ring-line transition-shadow placeholder:font-sans placeholder:normal-case placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
             <div>
@@ -93,7 +93,7 @@ export function CampaignLookup({
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@company.com"
                 required
-                className="mt-2 w-full rounded-xl bg-panel px-4 py-2.5 text-sm ring-1 ring-line transition-shadow placeholder:text-muted/60 focus:ring-2 focus:ring-accent"
+                className="mt-2 w-full rounded-xl bg-surface px-4 py-2.5 text-sm ring-1 ring-line transition-shadow placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
           </div>

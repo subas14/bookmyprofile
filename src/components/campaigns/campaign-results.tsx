@@ -70,31 +70,21 @@ export function CampaignResults({ result }: { result: LookupResult }) {
               <StatusPill status={campaign.status} />
             </div>
 
-            <dl className="mt-5 grid grid-cols-1 gap-4 border-t border-line pt-5 xs:grid-cols-3">
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-muted">
-                  Impressions
-                </dt>
-                <dd className="mt-1 text-xl font-semibold tabular-nums">
-                  {formatNumber(totals.impressions)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-muted">
-                  Clicks
-                </dt>
-                <dd className="mt-1 text-xl font-semibold tabular-nums">
-                  {formatNumber(totals.clicks)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-muted">
-                  Profile visits
-                </dt>
-                <dd className="mt-1 text-xl font-semibold tabular-nums">
-                  {formatNumber(totals.profileVisits)}
-                </dd>
-              </div>
+            <dl className="mt-5 grid grid-cols-1 gap-3 xs:grid-cols-3">
+              {[
+                { label: "Impressions", value: totals.impressions },
+                { label: "Clicks", value: totals.clicks },
+                { label: "Profile visits", value: totals.profileVisits },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-xl bg-subtle p-4">
+                  <dt className="text-xs font-medium text-muted">
+                    {stat.label}
+                  </dt>
+                  <dd className="mt-1.5 text-xl font-bold tabular-nums">
+                    {formatNumber(stat.value)}
+                  </dd>
+                </div>
+              ))}
             </dl>
 
             {campaign.metrics.length === 0 ? (
@@ -105,12 +95,15 @@ export function CampaignResults({ result }: { result: LookupResult }) {
 
             <div className="mt-6 border-t border-line pt-5">
               <p className="text-sm font-medium">History</p>
-              <ol className="mt-3 space-y-2.5">
+              <ol className="relative mt-4 space-y-4 border-l border-line pl-5">
                 {campaign.events.map((event, index) => (
-                  <li key={`${event.type}-${index}`} className="flex gap-3 text-sm">
+                  <li
+                    key={`${event.type}-${index}`}
+                    className="relative flex gap-3 text-sm"
+                  >
                     <span
                       aria-hidden
-                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                      className="absolute -left-[1.42rem] top-1.5 h-2 w-2 rounded-full bg-accent ring-4 ring-surface"
                     />
                     <span className="min-w-0">
                       <span className="block">{event.message}</span>

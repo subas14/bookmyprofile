@@ -64,11 +64,14 @@ export default async function AdminPage() {
 
   return (
     <Section className="py-14">
-      <div>
+      <div className="flex flex-col gap-2 border-b border-line pb-8">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+          Admin
+        </p>
         <h1 className="text-3xl font-bold tracking-tight">
           Creator console
         </h1>
-        <p className="mt-2 text-sm text-muted">
+        <p className="text-sm text-muted">
           Review bookings and move campaigns through their lifecycle.
         </p>
       </div>

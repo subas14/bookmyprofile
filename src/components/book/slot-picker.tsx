@@ -2,6 +2,7 @@
 
 import { Badge, Card, cx } from "@/components/ui";
 import { formatDate, formatMoney } from "@/lib/format";
+import { StepHeader } from "@/components/book/step-header";
 import type { BookablePlacement } from "@/components/book/types";
 
 /**
@@ -21,17 +22,18 @@ export function SlotPicker({
 }) {
   return (
     <Card>
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-base font-semibold">1. Choose your placements</h2>
-        <span className="text-xs text-muted">
-          {selected.length} selected
-        </span>
-      </div>
-      <p className="mt-1 text-sm text-muted">
-        Select one or more. Booking several at once unlocks a bundle discount.
-      </p>
+      <StepHeader
+        step={1}
+        title="Choose your placements"
+        description="Select one or more. Booking several at once unlocks a bundle discount."
+        aside={
+          <span className="shrink-0 text-xs tabular-nums text-muted">
+            {selected.length} selected
+          </span>
+        }
+      />
 
-      <fieldset className="mt-5 space-y-3">
+      <fieldset className="mt-5 space-y-2.5">
         <legend className="sr-only">Available placements</legend>
         {placements.map((placement) => {
           const isSelected = selected.includes(placement.slotKey);
@@ -41,12 +43,12 @@ export function SlotPicker({
             <label
               key={placement.slotKey}
               className={cx(
-                "flex cursor-pointer items-start gap-3.5 rounded-xl p-4 ring-1",
+                "flex cursor-pointer items-start gap-3.5 rounded-xl p-4",
                 disabled
-                  ? "cursor-not-allowed bg-panel/50 ring-line opacity-55 transition-colors"
+                  ? "cursor-not-allowed bg-panel/50 ring-1 ring-line opacity-60 transition-colors"
                   : isSelected
-                    ? "bmp-option bg-accent/10 ring-accent/40 hover:bg-accent/15 hover:ring-accent"
-                    : "bmp-option bg-panel ring-line hover:bg-subtle hover:ring-line-strong",
+                    ? "bmp-option bg-accent-wash ring-2 ring-accent"
+                    : "bmp-option bg-surface ring-1 ring-line hover:ring-line-strong",
               )}
             >
               <input
@@ -83,7 +85,7 @@ export function SlotPicker({
                 ) : null}
               </span>
               <span className="shrink-0 text-right">
-                <span className="block text-sm font-semibold tabular-nums">
+                <span className="block text-base font-bold tabular-nums">
                   {formatMoney(placement.priceMonthlyCents)}
                 </span>
                 <span className="block text-xs text-muted">/month</span>

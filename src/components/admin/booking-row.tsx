@@ -32,7 +32,7 @@ export function AdminBookingRow({
   totalAmountCents: number;
 }) {
   return (
-    <Card className="bg-surface">
+    <Card className="bmp-lift bg-surface p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">

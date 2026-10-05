@@ -1,54 +1,46 @@
-import { Card, Section, SectionHeading } from "@/components/ui";
+import { Section, SectionHeading } from "@/components/ui";
 
 const STEPS = [
   {
-    title: "Pick your placement",
-    body: "Choose a product link in the bio, either half of the cover, or bundle several for a discount.",
+    title: "Choose a placement",
+    body: "A product link in the bio, either half of the cover, or a bundle. Pick a term from two weeks to twelve months.",
   },
   {
-    title: "Choose your term",
-    body: "One to twelve months, or a two-week launch special on the bio link. Pay yearly and save 30% automatically.",
+    title: "Book & pay securely",
+    body: "Checkout is handled by Dodo Payments, merchant of record. Card, wallet or crypto, with an invoice by email.",
   },
   {
-    title: "Pay securely",
-    body: "Checkout is handled by Dodo Payments, with card, wallet or crypto, with an invoice.",
+    title: "Creator reviews",
+    body: "Your booking and creative are reviewed. If it is declined, you are refunded in full.",
   },
   {
-    title: "Go live",
-    body: "Send your logo and link. Your placement goes up and you can track it any time.",
+    title: "Campaign goes live",
+    body: "The placement goes up on your start date. Track its status any time with your reference.",
   },
 ];
 
 export function HowItWorksSection() {
   return (
-    <div className="border-y border-line bg-panel">
-      <Section>
-        <SectionHeading
-          eyebrow="How it works"
-          title="Live in four steps"
-          description="No sales calls and no negotiation on rates. Pick a slot, pay, send your creative."
-        />
-        <ol className="relative mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Connector rule behind the step numbers on wide screens. */}
-          <div
-            aria-hidden
-            className="absolute left-[12%] right-[12%] top-[2.6rem] hidden border-t border-dashed border-line-strong lg:block"
-          />
-          {STEPS.map((step, index) => (
-            <li key={step.title} className="relative">
-              <Card className="bmp-lift h-full bg-surface">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-sm font-bold text-background ring-4 ring-surface">
-                  {index + 1}
-                </span>
-                <h3 className="mt-4 text-base font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {step.body}
-                </p>
-              </Card>
-            </li>
-          ))}
-        </ol>
-      </Section>
-    </div>
+    <Section className="py-16 sm:py-20">
+      <SectionHeading
+        align="left"
+        eyebrow="How it works"
+        title="From booking to live in four steps."
+        description="No sales calls and no negotiation on rates."
+      />
+      <ol className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-4">
+        {STEPS.map((step, index) => (
+          <li key={step.title} className="bg-surface p-5 sm:p-6">
+            <span className="font-mono text-sm font-semibold tabular-nums text-accent">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <h3 className="mt-3 text-base font-semibold">{step.title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              {step.body}
+            </p>
+          </li>
+        ))}
+      </ol>
+    </Section>
   );
 }

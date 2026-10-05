@@ -3,6 +3,7 @@
 import { Card, cx } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
 import { isLaunchTerm } from "@/lib/domain";
+import { StepHeader } from "@/components/book/step-header";
 import {
   LAUNCH_SPECIAL,
   PROMO_ADDON_DISCOUNT_BPS,
@@ -44,10 +45,11 @@ export function TermPicker({
 
   return (
     <Card>
-      <h2 className="text-base font-semibold">2. Choose your term</h2>
-      <p className="mt-1 text-sm text-muted">
-        Longer terms receive a bigger automatic discount.
-      </p>
+      <StepHeader
+        step={2}
+        title="Choose your term"
+        description="Longer terms receive a bigger automatic discount."
+      />
 
       {LAUNCH_SPECIAL.active ? (
         <button
@@ -93,7 +95,7 @@ export function TermPicker({
         </button>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap gap-2.5">
+      <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         {TERM_OPTIONS.map((option) => {
           const bps = discountFor(option);
           const active = months === option;
@@ -104,10 +106,10 @@ export function TermPicker({
               onClick={() => onMonthsChange(option)}
               aria-pressed={active}
               className={cx(
-                "rounded-xl px-4 py-2.5 text-sm font-medium ring-1",
+                "rounded-xl px-4 py-3 text-sm font-semibold ring-1",
                 active
-                  ? "bg-accent text-accent-fg ring-accent transition-colors"
-                  : "bmp-option bg-panel text-muted ring-line hover:bg-subtle hover:text-foreground hover:ring-line-strong",
+                  ? "bg-foreground text-background ring-foreground transition-colors"
+                  : "bmp-option bg-surface text-muted ring-line hover:text-foreground hover:ring-line-strong",
               )}
             >
               {option} month{option === 1 ? "" : "s"}
@@ -115,7 +117,7 @@ export function TermPicker({
                 <span
                   className={cx(
                     "ml-1.5 text-[11px] font-bold tabular-nums",
-                    active ? "text-accent-fg/80" : "text-success",
+                    active ? "text-background/75" : "text-success",
                   )}
                 >
                   −{bps / 100}%
@@ -139,7 +141,7 @@ export function TermPicker({
           value={startDate}
           min={minStartDate}
           onChange={(event) => onStartDateChange(event.target.value)}
-          className="mt-2 w-full rounded-xl bg-panel px-4 py-2.5 text-sm ring-1 ring-line transition-shadow focus:ring-2 focus:ring-accent"
+          className="mt-2 w-full rounded-xl bg-surface px-4 py-2.5 text-sm ring-1 ring-line transition-shadow focus:outline-none focus:ring-2 focus:ring-accent"
         />
         <p className="mt-2 text-xs text-muted">
           Availability updates automatically for the dates you pick.
@@ -148,8 +150,12 @@ export function TermPicker({
 
       <label
         className={cx(
-          "mt-6 flex items-start gap-3 rounded-xl bg-panel p-4 ring-1 ring-line transition-colors hover:ring-line",
-          launch ? "cursor-not-allowed opacity-55" : "cursor-pointer",
+          "mt-6 flex items-start gap-3 rounded-xl p-4 transition-colors",
+          launch
+            ? "cursor-not-allowed bg-panel opacity-55 ring-1 ring-line"
+            : includePromoPost
+              ? "cursor-pointer bg-accent-wash ring-2 ring-accent"
+              : "cursor-pointer bg-surface ring-1 ring-line hover:ring-line-strong",
         )}
       >
         <input

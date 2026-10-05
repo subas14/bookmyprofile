@@ -1,16 +1,17 @@
-import Link from "next/link";
+import type { ReactNode } from "react";
 
 import {
   Badge,
   ButtonArrow,
   ButtonLink,
-  Card,
   Section,
   SectionHeading,
   cx,
 } from "@/components/ui";
+import { BioVisual, CoverVisual } from "@/components/home/placement-visuals";
+import { PromoOffers } from "@/components/promo-offers";
 import { BIO_LINK_MAX_CONCURRENT } from "@/lib/domain";
-import { formatMoney } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { LAUNCH_SPECIAL } from "@/lib/pricing";
 import type {
   AvailabilityView,
@@ -18,23 +19,29 @@ import type {
 } from "@/components/home/types";
 
 /**
- * The inventory section: the product links in the bio (lead), the two cover
- * halves, and the promo add-on, each showing real-time availability.
+ * "Choose your placement": one card per sellable placement, each with a
+ * to-scale preview, the live price and availability from the database, and a
+ * deep link into the booking flow (`/book?slots=…`). The launch special sits
+ * above as a slim banner; the dedicated-post offers (booked by DM) sit below.
+ *
+ * The section keeps `id="inventory"` so existing `/#inventory` links resolve.
  */
 export function InventorySection({
   coverSlots,
   bioLink,
-  promoPost,
   availability,
-  openCoverSlots,
   bioAvailable,
   bioLinksOpen,
+  profileUrl,
+  handle,
 }: {
   coverSlots: PlacementView[];
   bioLink?: PlacementView;
-  promoPost?: PlacementView;
+  /** Creator's X profile; the post offers are booked by DM there. */
+  profileUrl: string;
+  handle: string;
   availability: Record<string, AvailabilityView>;
-  openCoverSlots: number;
+  /** Server availability verdict for the bio link (authoritative). */
   bioAvailable: boolean;
   /** Free product-link lines in the bio. */
   bioLinksOpen: number;
@@ -44,195 +51,174 @@ export function InventorySection({
     : BIO_LINK_MAX_CONCURRENT;
 
   return (
-    <Section id="inventory">
-      <SectionHeading
-        eyebrow="The inventory"
-        title="Three placements. Published prices."
-        description={`Either half of the cover photo for ${
-          coverSlots[0] ? formatMoney(coverSlots[0].priceMonthlyCents) : "$99"
-        } a month, or a product link in the bio for ${
-          bioLink ? formatMoney(bioLink.priceMonthlyCents) : "$89"
-        }. Longer terms lower the monthly rate. When a slot is taken, it is shown as taken.`}
-      />
+    <div className="border-y border-line bg-panel">
+      <Section id="inventory" className="py-16 sm:py-20">
+        <SectionHeading
+          align="left"
+          eyebrow="Placements"
+          title="Choose your placement."
+          description="Published monthly prices, live availability. Longer terms and bundles are discounted automatically at checkout."
+        />
 
-      {bioLink && LAUNCH_SPECIAL.active ? (
-        <div className="mt-10 flex flex-col gap-4 rounded-2xl border border-dashed border-accent/60 bg-accent-wash p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-          <div>
-            <span className="inline-flex rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-accent-fg">
-              Launch special
-            </span>
-            <p className="mt-2 text-lg font-bold tracking-tight">
-              Try a link in bio for two weeks.
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              Your product link in the bio for 14 days, flat. Test the audience
-              before you commit to a month or more.
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-4">
-            <p className="text-right">
-              <span className="block text-3xl font-extrabold tabular-nums">
-                {formatMoney(LAUNCH_SPECIAL.priceCents)}
+        {bioLink && LAUNCH_SPECIAL.active ? (
+          <div className="mt-8 flex flex-col gap-3 rounded-xl border border-dashed border-accent/60 bg-accent-wash px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm">
+              <span className="mr-2 rounded-md bg-accent px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent-fg">
+                Launch special
               </span>
-              <span className="text-xs text-muted">per 2 weeks</span>
+              <strong className="font-semibold">
+                Product link in bio for 2 weeks,{" "}
+                <span className="tabular-nums">
+                  {formatMoney(LAUNCH_SPECIAL.priceCents)}
+                </span>
+              </strong>
+              <span className="text-muted"> · test the audience first.</span>
             </p>
             <ButtonLink
               href={`/book?slots=${bioLink.slotKey}&term=launch`}
               size="sm"
+              className="self-start sm:self-auto"
             >
               Claim it
               <ButtonArrow />
             </ButtonLink>
           </div>
-        </div>
-      ) : null}
-
-      <div
-        className={cx(
-          "grid gap-5 lg:grid-cols-5",
-          bioLink && LAUNCH_SPECIAL.active ? "mt-5" : "mt-14",
-        )}
-      >
-        {bioLink ? (
-          <Card className="bmp-lift flex flex-col border-invert-line bg-invert text-invert-fg lg:col-span-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="inline-flex rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-accent-fg">
-                  Highest intent
-                </span>
-                <h3 className="mt-3 text-2xl font-bold tracking-tight">
-                  {bioLink.label}
-                </h3>
-              </div>
-              <Badge tone={bioAvailable ? "success" : "danger"}>
-                {bioAvailable
-                  ? `${bioLinksOpen} of ${bioMax} open`
-                  : "All booked"}
-              </Badge>
-            </div>
-            <p className="mt-4 flex-1 text-sm leading-relaxed text-invert-fg/70">
-              {bioLink.details}
-            </p>
-
-            {/* Three bio lines, drawn to scale */}
-            <ul className="mt-6 space-y-2">
-              {Array.from({ length: bioMax }, (_, index) => {
-                const open = index >= bioMax - bioLinksOpen;
-                return (
-                  <li
-                    key={index}
-                    className={cx(
-                      "flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-[13px]",
-                      open
-                        ? "border-dashed border-accent/70 bg-accent/10 text-invert-fg"
-                        : "border-invert-fg/15 bg-invert-fg/5 text-invert-fg/50",
-                    )}
-                  >
-                    <span className="font-medium">
-                      {open
-                        ? `Product link ${index + 1} · yours`
-                        : `Product link ${index + 1} · booked`}
-                    </span>
-                    <span className="text-xs tabular-nums text-invert-fg/60">
-                      {formatMoney(bioLink.priceMonthlyCents)}/mo
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <div className="mt-6 flex items-end justify-between border-t border-invert-fg/15 pt-5">
-              <p className="text-2xl font-semibold tabular-nums">
-                {formatMoney(bioLink.priceMonthlyCents)}
-                <span className="text-sm font-normal text-invert-fg/60">
-                  /month
-                </span>
-              </p>
-              <ButtonLink
-                href={`/book?slots=${bioLink.slotKey}`}
-                variant="primary"
-                size="sm"
-              >
-                {bioAvailable ? "Book a link" : "See dates"}
-                <ButtonArrow />
-              </ButtonLink>
-            </div>
-          </Card>
         ) : null}
 
-        <Card className="bmp-lift lg:col-span-2">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <Badge>Cover photo</Badge>
-              <h3 className="mt-3 text-xl font-bold">
-                Two halves, one brand each
-              </h3>
-            </div>
-            <Badge tone={openCoverSlots > 0 ? "success" : "danger"}>
-              {openCoverSlots} of {coverSlots.length} open
-            </Badge>
-          </div>
-          <p className="mt-4 text-sm leading-relaxed text-muted">
-            The cover is split straight down the middle. You get one full half
-            for your logo and tagline, seen by everyone who opens the profile.
-            Book both halves for the whole cover and a bundle discount applies.
-          </p>
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {bioLink ? (
+            <PlacementCard
+              title={bioLink.label}
+              tag="Highest intent"
+              summary={bioLink.summary}
+              priceCents={bioLink.priceMonthlyCents}
+              unit="/month"
+              status={
+                bioAvailable
+                  ? { tone: "success", label: `${bioLinksOpen} of ${bioMax} open` }
+                  : {
+                      tone: "danger",
+                      label: "All booked",
+                      next: availability[bioLink.slotKey]?.nextAvailableFrom,
+                    }
+              }
+              href={`/book?slots=${bioLink.slotKey}`}
+              cta={bioAvailable ? "Book" : "See dates"}
+              visual={
+                <BioVisual max={bioMax} open={bioAvailable ? bioLinksOpen : 0} />
+              }
+              featured
+            />
+          ) : null}
 
-          <div className="mt-6 grid grid-cols-2 gap-2">
-            {coverSlots.map((slot) => {
-              const open = availability[slot.slotKey]?.available ?? false;
-              return (
-                <div
-                  key={slot.id}
-                  className={cx(
-                    "flex aspect-[4/3] flex-col items-center justify-center rounded-xl p-3 text-center ring-1",
-                    open
-                      ? "bmp-option bg-accent-wash ring-accent/40 hover:ring-accent"
-                      : "bg-subtle ring-line transition-colors",
-                  )}
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-wider">
-                    {slot.label.replace("Cover · ", "")}
-                  </p>
-                  <p className="mt-1 text-xs tabular-nums text-muted">
-                    {formatMoney(slot.priceMonthlyCents)}/mo
-                  </p>
-                  {open ? (
-                    <Link
-                      href={`/book?slots=${slot.slotKey}`}
-                      className="mt-2 text-xs font-semibold text-accent transition-colors hover:text-foreground"
-                    >
-                      Book &rarr;
-                    </Link>
-                  ) : (
-                    <span className="mt-2 text-xs text-muted">Booked</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
+          {coverSlots.map((slot, index) => {
+            const info = availability[slot.slotKey];
+            const open = info?.available ?? false;
+            return (
+              <PlacementCard
+                key={slot.id}
+                title={slot.label}
+                summary={slot.summary}
+                priceCents={slot.priceMonthlyCents}
+                unit="/month"
+                status={
+                  open
+                    ? { tone: "success", label: "Open" }
+                    : {
+                        tone: "danger",
+                        label: "Booked",
+                        next: info?.nextAvailableFrom,
+                      }
+                }
+                href={`/book?slots=${slot.slotKey}`}
+                cta={open ? "Book" : "See dates"}
+                visual={
+                  <CoverVisual side={index === 0 ? "left" : "right"} open={open} />
+                }
+              />
+            );
+          })}
 
-      {promoPost ? (
-        <Card className="mt-5 flex flex-col gap-5 border-accent/35 bg-accent-wash sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Badge tone="accent">Add-on · 30% off with any placement</Badge>
-            <h3 className="mt-3 text-lg font-bold">
-              {promoPost.label}
-            </h3>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-              {promoPost.details}
-            </p>
-          </div>
-          <div className="shrink-0 sm:text-right">
-            <p className="text-2xl font-semibold tabular-nums">
-              {formatMoney(promoPost.priceMonthlyCents)}
-            </p>
-            <p className="text-xs text-muted">one-off</p>
-          </div>
-        </Card>
-      ) : null}
-    </Section>
+        </ul>
+
+        {/* Dedicated-post offers, booked by DM (display only). */}
+        <PromoOffers
+          profileUrl={profileUrl}
+          handle={handle}
+          className="mt-12 border-t border-line pt-10"
+        />
+      </Section>
+    </div>
   );
 }
+
+type StatusTone = "success" | "danger" | "neutral";
+
+function PlacementCard({
+  title,
+  tag,
+  summary,
+  priceCents,
+  unit,
+  status,
+  href,
+  cta,
+  visual,
+  featured,
+}: {
+  title: string;
+  tag?: string;
+  summary: string;
+  priceCents: number;
+  unit: string;
+  status: { tone: StatusTone; label: string; next?: Date | null };
+  href: string;
+  cta: string;
+  visual: ReactNode;
+  featured?: boolean;
+}) {
+  return (
+    <li
+      className={cx(
+        "bmp-lift flex flex-col rounded-2xl border bg-surface p-5",
+        featured ? "border-accent/50" : "border-line",
+      )}
+    >
+      {visual}
+
+      <div className="mt-5 flex items-start justify-between gap-2">
+        <h3 className="text-base font-bold leading-snug tracking-tight">
+          {title}
+        </h3>
+        <Badge tone={status.tone}>{status.label}</Badge>
+      </div>
+      {tag ? (
+        <p className="mt-1 text-xs font-semibold text-accent">{tag}</p>
+      ) : null}
+      <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">{summary}</p>
+      {status.next ? (
+        <p className="mt-2 text-xs text-warning">
+          Next available {formatDate(status.next)}
+        </p>
+      ) : null}
+
+      <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+        <p className="tabular-nums">
+          <span className="text-xl font-bold tracking-tight">
+            {formatMoney(priceCents)}
+          </span>
+          <span className="ml-0.5 text-xs text-muted">{unit}</span>
+        </p>
+        <ButtonLink
+          href={href}
+          size="sm"
+          variant={featured ? "primary" : "secondary"}
+        >
+          {cta}
+          <ButtonArrow />
+        </ButtonLink>
+      </div>
+    </li>
+  );
+}
+

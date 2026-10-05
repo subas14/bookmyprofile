@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { Badge, Section } from "@/components/ui";
 import { BookingForm } from "@/components/book/booking-form";
+import { CreatorAvatar } from "@/components/creator-avatar";
 import { getPrimaryCreator } from "@/server/creators";
 import { availabilityForTerm, earliestStartDate } from "@/server/availability";
 import { toDateInputValue } from "@/lib/dates";
@@ -73,23 +74,41 @@ export default async function BookPage({
 
   return (
     <>
-      <div className="border-b border-line">
-        <Section className="py-14">
-          <Badge tone="accent">
-            Booking with {creator.displayName} · {creator.handle}
-          </Badge>
-          <h1 className="mt-5 text-balance text-4xl font-extrabold tracking-[-0.03em] sm:text-5xl">
+      <div className="border-b border-line bg-panel">
+        <Section className="py-10 sm:py-12">
+          <div className="flex flex-wrap items-center gap-3">
+            <CreatorAvatar
+              src={creator.avatarUrl}
+              name={creator.displayName}
+              size={36}
+            />
+            <Badge tone="accent">
+              Booking with {creator.displayName} · {creator.handle}
+            </Badge>
+          </div>
+          <h1 className="mt-5 text-balance text-3xl font-extrabold tracking-[-0.03em] sm:text-[2.75rem]">
             Book your placement.
           </h1>
-          <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted">
-            Pick what you want and for how long. The price updates as you go.
-            Discounts are applied automatically, so there is nothing to
-            negotiate.
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
+            Pick what you want and for how long. The price updates as you go,
+            and discounts apply automatically.
           </p>
+          <ol className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
+            {["Placements", "Term", "Details", "Secure checkout"].map(
+              (label, index) => (
+                <li key={label} className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full border border-line-strong font-mono text-[11px] font-semibold">
+                    {index + 1}
+                  </span>
+                  {label}
+                </li>
+              ),
+            )}
+          </ol>
         </Section>
       </div>
 
-      <Section className="py-12">
+      <Section className="py-10 sm:py-12">
         <BookingForm
           creatorSlug={creator.slug}
           placements={placements}

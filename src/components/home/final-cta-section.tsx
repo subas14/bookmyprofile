@@ -13,8 +13,8 @@ export function FinalCtaSection({
   openCount: number;
 }) {
   return (
-    <Section className="py-16 sm:py-24">
-      <div className="relative overflow-hidden rounded-[2rem] bg-invert px-6 py-16 text-center text-invert-fg sm:px-12 sm:py-20">
+    <Section className="py-16 sm:py-20">
+      <div className="relative overflow-hidden rounded-3xl border border-invert-line bg-invert px-6 py-14 text-center text-invert-fg sm:px-12 sm:py-16">
         {/* Dot field, inverted for the panel. */}
         <div
           aria-hidden
@@ -35,10 +35,10 @@ export function FinalCtaSection({
               ? "All placements booked"
               : `${openCount} placement${openCount === 1 ? "" : "s"} open`}
           </span>
-          <h2 className="mx-auto mt-6 max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-5xl sm:leading-[1.05]">
-            Put your product in front of{" "}
-            {monthlyImpressions ? formatCompactNumber(monthlyImpressions) : "7M"}{" "}
-            impressions a month.
+          <h2 className="mx-auto mt-6 max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-[2.75rem] sm:leading-[1.08]">
+            {monthlyImpressions
+              ? `Reach about ${formatCompactNumber(monthlyImpressions)} impressions a month.`
+              : "Put your product in front of a real audience."}
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-invert-fg/70">
             {openCount === 0
